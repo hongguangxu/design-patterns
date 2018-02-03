@@ -81,6 +81,8 @@ public:
     virtual ~Command();
     //virtual const char* AskUser() = 0;
     virtual void Execute() = 0;
+    //virtual void Add(Command*) = 0;
+    //virtual void Remove(Command*) = 0;
 protected:
     //virtual const char* AskUser() = 0;
     //virtual void Execute() = 0;
@@ -108,7 +110,7 @@ private:
 void OpenCommand::AskUser(char *str)
 {
     cin.getline(str, 10);
-    cout << "AskUser" << str << endl;
+    cout << "AskUser " << str << endl;
     return;
 }
 OpenCommand::OpenCommand(Application* app)
@@ -144,6 +146,24 @@ PasteCommand::PasteCommand(Document* doc)
 void PasteCommand::Execute()
 {
     _document->Paste();
+}
+
+template <class Receiver>
+class SimpleCommand : public Command
+{
+public:
+    typedef void (Receiver::* Action)();
+    SimpleCommand(Receiver* r, Action a) :
+		_receiver(r), _action(a) { }
+    virtual void Execute();
+private:
+    Action _action;
+    Receiver* _receiver;
+};
+template <class Receiver>
+void SimpleCommand<Receiver>::Execute()
+{
+    (_receiver->*_action)();
 }
 
 class MacroCommand : public Command 
@@ -183,15 +203,18 @@ void MacroCommand::Remove(Command* c)
 int main()
 {
     Application *apl = new Application;
-    OpenCommand *opcmd = new OpenCommand(apl);
+    Command *opcmd = new OpenCommand(apl);
     MacroCommand *Mcmd = new MacroCommand;
     char name[] = "xuhg";
     Document* doc = new Document(name);
-    PasteCommand *pcmd = new PasteCommand(doc);
+    Command* pcmd = new PasteCommand(doc);
+    Command* scmd = new SimpleCommand<Document>(doc, &Document::Cut);
     Mcmd->Add(opcmd);
     Mcmd->Add(pcmd);
+    Mcmd->Add(scmd);
     Mcmd->Execute();
     Mcmd->Remove(opcmd);
     Mcmd->Remove(pcmd);
+    Mcmd->Remove(scmd);
     return 0;
 }
